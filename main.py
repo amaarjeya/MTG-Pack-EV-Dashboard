@@ -1,71 +1,110 @@
-"""
-
-File for streamlit dashboard
-
-1. Display Pack EV Table
-
-2. Allow user to pick set/ booster and run simulations 
-
-
-"""
-
-
 import streamlit as st
 import pandas as pd
-
 from functions import *
 
-#Import demo data files- 
-# these files are static, then allow users to upload files themselves
+# Load demo data
+demo_sets, demo_setBoosterContents, demo_setBoosterSheetCards, demo_setBoosterContentWeights, demo_setBoosterSheets, demo_prices, demo_cards, demo_pack_prices = load_data()
 
-sets, setBoosterContents, setBoosterSheetCards, setBoosterContentWeights, setBoosterSheets, prices, cards, pack_prices = load_data()
+# ----------------------------
+# Sidebar Upload
+# ----------------------------
+with st.sidebar.expander("Upload Files", expanded=False):
+    uploaded_sets = st.file_uploader("Upload sets.csv", type="csv")
+    uploaded_setBoosterContents = st.file_uploader("Upload setBoosterContents.csv", type="csv")
+    uploaded_setBoosterSheetCards = st.file_uploader("Upload setBoosterSheetCards.csv", type="csv")
+    uploaded_setBoosterContentWeights = st.file_uploader("Upload setBoosterContentWeights.csv", type="csv")
+    uploaded_setBoosterSheets = st.file_uploader("Upload setBoosterSheets.csv", type="csv")
+    uploaded_prices = st.file_uploader("Upload prices.csv", type="csv")
+    uploaded_cards = st.file_uploader("Upload cards.csv", type="csv")
+    uploaded_pack_prices = st.file_uploader("Upload pack_prices.csv", type="csv")
 
-# Title
-st.title("MTG Pack EV Dashboard")
+# ----------------------------
+# Load uploaded files or fallback to demo
+# ----------------------------
+sets = pd.read_csv(uploaded_sets) if uploaded_sets else demo_sets
+setBoosterContents = pd.read_csv(uploaded_setBoosterContents) if uploaded_setBoosterContents else demo_setBoosterContents
+setBoosterSheetCards = pd.read_csv(uploaded_setBoosterSheetCards) if uploaded_setBoosterSheetCards else demo_setBoosterSheetCards
+setBoosterContentWeights = pd.read_csv(uploaded_setBoosterContentWeights) if uploaded_setBoosterContentWeights else demo_setBoosterContentWeights
+setBoosterSheets = pd.read_csv(uploaded_setBoosterSheets) if uploaded_setBoosterSheets else demo_setBoosterSheets
+prices = pd.read_csv(uploaded_prices) if uploaded_prices else demo_prices
+cards = pd.read_csv(uploaded_cards) if uploaded_cards else demo_cards
+pack_prices = pd.read_csv(uploaded_pack_prices) if uploaded_pack_prices else demo_pack_prices
 
-# Sidebar inputs
-st.sidebar.header("Settings")
+# ----------------------------
+# Sidebar Table
+# ----------------------------
+st.sidebar.header("Table Settings")
 threshold = st.sidebar.number_input("Price Threshold", value=2.0, step=0.5)
-min_date = st.sidebar.date_input("Minimum Release Date", value=pd.to_datetime("2024-06-01"))
-# Convert to pandas Timestamp for comparisons
-min_date = pd.Timestamp(min_date)
+min_date = pd.Timestamp(st.sidebar.date_input("Minimum Release Date", value=pd.to_datetime("2025-01-01")))
 
-
-# Get EV table
-latest_packs_EV = return_EV_table(threshold=threshold, min_date=min_date)
-
-# Display table
-st.subheader("Pack Expected Value")
-
-# Pick a row height (in pixels). Adjust this until it looks good.
-row_height = 34
-
-
-# Calculate height dynamically
-dynamic_height = min(len(latest_packs_EV) * row_height + 50, 1000) 
-
-#DataFrame (styled)
-
-st.dataframe(return_EV_table_styled(latest_packs_EV), width= 'stretch', height= dynamic_height)
-
-
+# ----------------------------
+# Sidebar Table
+# ----------------------------
 st.sidebar.header("Simulation Settings")
-set_input = st.sidebar.selectbox("Set", options=latest_packs_EV['Set Code'].unique().tolist(), index=0)
-booster_input = st.sidebar.selectbox("Booster Type", options=['play','set','draft','collector'], index=0)
+
+# Initialize session state if not present
+if 'sim_ran' not in st.session_state:
+    st.session_state['sim_ran'] = False  # Tracks if initial simulation ran
+
+if 'force_rerun' not in st.session_state:
+    st.session_state['force_rerun'] = False  # Tracks user request to rerun
+
+#Force rerun sim, even if inputs are the same
+if st.sidebar.button("Run Simulation"):
+    st.session_state['force_rerun'] = True
+
 sim_size = st.sidebar.number_input("Packs per Simulation", value=100, step=100)
 samples = st.sidebar.number_input("Number of Simulations", value=100, step=100)
 
 
 
-pack_price, avg_pack_value, pack_value_at_sim_EV = run_simulation(set_input, booster_input, sim_size, samples, threshold)
 
 
-# ----- Display Plot -----
+# ----------------------------
+# Main dashboard logic as a function
+# ----------------------------
+def render_dashboard():
+    st.title("MTG Pack EV Dashboard")
 
-st.subheader("Simulate Pack Openings")
+    # EV Table
+    latest_packs_EV = return_EV_table(
+        sets, setBoosterContents, setBoosterSheetCards, setBoosterContentWeights,
+        setBoosterSheets, prices, cards, pack_prices,
+        threshold=threshold, min_date=min_date
+    )
 
-fig = plot_simulation(avg_pack_value, pack_value_at_sim_EV, pack_price, sim_size, set_input, booster_input, threshold)
-st.pyplot(fig)
+    set_input = st.sidebar.selectbox("Set", options=latest_packs_EV['Set Code'].unique())
+    booster_input = st.sidebar.selectbox("Booster Type", options=['play','set','draft','collector'])
+
+    st.subheader("Pack Expected Value")
+    row_height = 34
+    dynamic_height = min(len(latest_packs_EV) * row_height + 50, 1000)
+    st.dataframe(return_EV_table_styled(latest_packs_EV), width='stretch', height=dynamic_height)
+
+    # Preprocessing
+    booster_subsets, sheets_subsets, cards_by_sheet = preprocess_for_sim(
+        setBoosterSheetCards, setBoosterSheets, setBoosterContents,
+        setBoosterContentWeights, prices, cards, threshold=threshold
+    )
+
+    # --- Simulation logic ---
+    run_sim = not st.session_state['sim_ran'] or st.session_state['force_rerun']
+
+    if run_sim:
+        pack_price, avg_pack_value, pack_value_at_sim_EV = run_simulation(
+            latest_packs_EV, set_input, booster_input, sim_size, samples, threshold,
+            booster_subsets, sheets_subsets, cards_by_sheet
+        )
+        st.session_state['sim_ran'] = True
+        st.session_state['force_rerun'] = False
+
+    # Display results
+    st.subheader("Simulate Pack Openings")
+    fig = plot_simulation(avg_pack_value, pack_value_at_sim_EV, pack_price, sim_size, set_input, booster_input, threshold)
+    st.pyplot(fig)
 
 
-
+# ----------------------------
+# Render dashboard
+# ----------------------------
+render_dashboard()
