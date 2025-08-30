@@ -699,3 +699,24 @@ def plot_simulation(avg_pack_value, pack_value_at_sim_EV, pack_price, sim_size, 
     ax.legend()
 
     return fig
+
+
+def sim_card_prices (n_packs, pack_price, set_input, booster_input, booster_subsets, sheets_subsets, cards_by_sheet):
+    table = sim_market(n_packs, pack_price, set_input, booster_input, booster_subsets, sheets_subsets, cards_by_sheet)
+
+    table = table[['cardName', 'price', 'sim price']]
+
+    table['Price Spread'] = ((table['price'] - table['sim price']) / table['sim price']) * 100 #Convert to percentage
+
+    table = table.rename(columns= {'cardName' : 'Name', 'price': 'Card Price ($)', 'sim price': 'Sim Price ($)'})
+
+    table = table.sort_values(by='Price Spread', ascending= False)
+
+    table = table.style \
+        .background_gradient(subset=["Price Spread"], cmap="RdYlGn") \
+        .format({
+            "Card Price ($)": "{:.2f}",
+            "Sim Price ($)": "{:.2f}",
+            "Price Spread": "{:.2f}%"})
+                             
+    return table
