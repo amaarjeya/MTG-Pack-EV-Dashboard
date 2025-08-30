@@ -53,6 +53,16 @@ if 'force_rerun' not in st.session_state:
 if st.sidebar.button("Run Simulation"):
     st.session_state['force_rerun'] = True
 
+# Force rerun if the user uploads any new file
+uploaded_files = [
+    uploaded_sets, uploaded_setBoosterContents, uploaded_setBoosterSheetCards,
+    uploaded_setBoosterContentWeights, uploaded_setBoosterSheets, uploaded_prices,
+    uploaded_cards, uploaded_pack_prices
+]
+
+if any(uploaded_files):
+    st.session_state['force_rerun'] = True
+
 sim_size = st.sidebar.number_input("Packs per Simulation", value=100, step=100)
 samples = st.sidebar.number_input("Number of Simulations", value=100, step=100)
 
