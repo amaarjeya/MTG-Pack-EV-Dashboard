@@ -112,17 +112,6 @@ def load_data():
     return sets, setBoosterContents, setBoosterSheetCards, setBoosterContentWeights, setBoosterSheets, prices, cards, pack_prices
 
 
-#@st.cache_data
-#def load_data():
-    sets = pd.read_csv("Data/sets.csv")
-    setBoosterContents = pd.read_csv("Data/setBoosterContents.csv")
-    setBoosterSheetCards = pd.read_csv("Data/setBoosterSheetCards.csv")
-    setBoosterContentWeights = pd.read_csv("Data/setBoosterContentWeights.csv")
-    setBoosterSheets = pd.read_csv("Data/setBoosterSheets.csv")
-    prices = pd.read_csv("Data/cardPrices.csv")
-    cards = pd.read_csv("Data/cards.csv")
-    pack_prices = pd.read_csv("Data/PackPrices.csv")
-    return sets, setBoosterContents, setBoosterSheetCards, setBoosterContentWeights, setBoosterSheets, prices, cards, pack_prices
 
 sets, setBoosterContents, setBoosterSheetCards, setBoosterContentWeights, setBoosterSheets, prices, cards, pack_prices = load_data()
  
@@ -225,14 +214,15 @@ def get_merged_cardprices(
     return merged_cardprices
 
 
-def get_pack_EV(threshold = 0, 
-                sets = sets, 
+def get_pack_EV(
+                
                 setBoosterContents = setBoosterContents, 
                 setBoosterSheetCards = setBoosterSheetCards,
                 setBoosterContentWeights = setBoosterContentWeights,
                 setBoosterSheets = setBoosterSheets, 
                 prices = prices, 
-                cards = cards
+                cards = cards,
+                threshold = 0
                 ):
     
     merged_cardprices = get_merged_cardprices(threshold = threshold,
@@ -436,14 +426,30 @@ def last_n_sets(min_date, sets_df = sets):
 
 # Make Final EV Table
 
-def return_EV_table(threshold = 0, min_date = '2024-06-01'):
+def return_EV_table(
+        sets, 
+        setBoosterContents, 
+        setBoosterSheetCards, 
+        setBoosterContentWeights, 
+        setBoosterSheets, 
+        prices, 
+        cards, 
+        pack_prices,
+        threshold = 0, 
+        min_date = '2024-06-01'):
 
 
-    df = last_n_sets(min_date)
+    df = last_n_sets(min_date, sets_df = sets)
 
     main_boosters = ['draft', 'set', 'collector', 'default', 'play']
 
-    pack_EV = get_pack_EV(threshold)
+    pack_EV = get_pack_EV(setBoosterContents = setBoosterContents, 
+                setBoosterSheetCards = setBoosterSheetCards,
+                setBoosterContentWeights = setBoosterContentWeights,
+                setBoosterSheets = setBoosterSheets, 
+                prices = prices, 
+                cards = cards,
+                threshold = threshold)
 
     pack_EV = pack_EV[pack_EV['boosterName'].isin(main_boosters)]
 
@@ -498,17 +504,6 @@ def return_EV_table_styled(latest_packs_EV):
 
 
 
-"""
-Make EV Table
-
-"""
-
-threshold = 2
-min_date = '2024-01-01'
-
-latest_packs_EV  = return_EV_table(threshold, min_date)
-
-return_EV_table_styled(latest_packs_EV)
 
 
 """
@@ -521,33 +516,48 @@ Uses distribution for booster Index and Card Weights, per Sheet
 
 # ----- Preprocessing for simulation -----
 
-merged_cardprices = get_merged_cardprices()
+def preprocess_for_sim(setBoosterSheetCards, 
+                       setBoosterSheets, 
+                       setBoosterContents, 
+                       setBoosterContentWeights, 
+                       prices, 
+                       cards, 
+                       threshold):
+    
+    merged_cardprices = get_merged_cardprices(threshold,
+            setBoosterSheetCards,
+            setBoosterSheets,
+            prices, 
+            cards)
 
-merged_cardprices_marketsim = merged_cardprices[['cardName', 'cardUuid', 'cardFinish', 'boosterName', 'setCode', 'sheetName', 'cardWeight', 'totalSheetWeight', 'price']]
+    merged_cardprices_marketsim = merged_cardprices[['cardName', 'cardUuid', 'cardFinish', 'boosterName', 'setCode', 'sheetName', 'cardWeight', 'totalSheetWeight', 'price']]
 
-# --- Precompute booster probabilities ---
-booster_subsets = {}
-for (setCode, boosterName), group in setBoosterContentWeights.groupby(['setCode', 'boosterName']):
-    booster_subsets[(setCode, boosterName)] = (
-        group['boosterIndex'].values,
-        (group['boosterWeight'] / group['boosterWeight'].sum()).values
-    )
+    # --- Precompute booster probabilities ---
+    booster_subsets = {}
+    for (setCode, boosterName), group in setBoosterContentWeights.groupby(['setCode', 'boosterName']):
+        booster_subsets[(setCode, boosterName)] = (
+            group['boosterIndex'].values,
+            (group['boosterWeight'] / group['boosterWeight'].sum()).values
+        )
 
-# --- Precompute sheets per booster index ---
-sheets_subsets = {}
-for (setCode, boosterName, boosterIndex), group in setBoosterContents.groupby(['setCode', 'boosterName', 'boosterIndex']):
-    sheets_subsets[(setCode, boosterName, boosterIndex)] = group[['sheetName', 'sheetPicks']].values  # array of [sheetName, sheetPicks]
+    # --- Precompute sheets per booster index ---
+    sheets_subsets = {}
+    for (setCode, boosterName, boosterIndex), group in setBoosterContents.groupby(['setCode', 'boosterName', 'boosterIndex']):
+        sheets_subsets[(setCode, boosterName, boosterIndex)] = group[['sheetName', 'sheetPicks']].values  # array of [sheetName, sheetPicks]
 
-# --- Precompute cards per sheet ---
-cards_by_sheet = {}
-for (setCode, boosterName, sheetName), group in merged_cardprices_marketsim.groupby(['setCode', 'boosterName', 'sheetName']):
-    prices = group['price'].values
-    weights = (group['cardWeight'] / group['totalSheetWeight']).values
-    cards_by_sheet[(setCode, boosterName, sheetName)] = (prices, weights, group.to_dict(orient='records'))
+    # --- Precompute cards per sheet ---
+    cards_by_sheet = {}
+    for (setCode, boosterName, sheetName), group in merged_cardprices_marketsim.groupby(['setCode', 'boosterName', 'sheetName']):
+        prices = group['price'].values
+        weights = (group['cardWeight'] / group['totalSheetWeight']).values
+        cards_by_sheet[(setCode, boosterName, sheetName)] = (prices, weights, group.to_dict(orient='records'))
+
+    
+    return booster_subsets, sheets_subsets, cards_by_sheet
     
 
 # --- Simulate Opening a random booster pack ---
-def crack_pack(set_input="MH3", booster_input="play"):
+def crack_pack(booster_subsets, sheets_subsets, cards_by_sheet, set_input, booster_input):
     # 1. Sample booster index
     booster_indices, booster_weights = booster_subsets[(set_input, booster_input)]
 
@@ -569,7 +579,7 @@ def crack_pack(set_input="MH3", booster_input="play"):
     return pack
 
 
-def sim_market(n_packs, pack_price = 26.24, set_input = "MH3", booster_input = "play"):
+def sim_market(n_packs, pack_price, set_input, booster_input, booster_subsets, sheets_subsets, cards_by_sheet):
     #Calcs used in simulation
 
     total_market_value = n_packs * pack_price
@@ -578,7 +588,7 @@ def sim_market(n_packs, pack_price = 26.24, set_input = "MH3", booster_input = "
 
 
     for i in range(n_packs):
-        result = crack_pack(set_input, booster_input)
+        result = crack_pack(booster_subsets, sheets_subsets, cards_by_sheet,set_input, booster_input)
         market.append(result)
 
     # Step 1: Flatten the outer list
@@ -626,7 +636,7 @@ samples = 100 #Number of simulations run
 set_input = "OTJ"
 booster_input="play"
 
-def run_simulation(set_input, booster_input, sim_size, samples, threshold):
+def run_simulation(latest_packs_EV, set_input, booster_input, sim_size, samples, threshold, booster_subsets, sheets_subsets, cards_by_sheet):
     pack_price = latest_packs_EV[
         (latest_packs_EV['Set Code'] == set_input) &
         (latest_packs_EV['Booster Name'] == booster_input)
@@ -640,7 +650,7 @@ def run_simulation(set_input, booster_input, sim_size, samples, threshold):
 
     for n in range(samples): # n number of packs opened, per sim
 
-        result = sim_market(sim_size, pack_price, set_input, booster_input)
+        result = sim_market(sim_size, pack_price, set_input, booster_input, booster_subsets, sheets_subsets, cards_by_sheet)
 
         
         #Only include cards that are worth more than threshold
