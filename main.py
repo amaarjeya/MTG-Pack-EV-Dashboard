@@ -38,36 +38,13 @@ threshold = st.sidebar.number_input("Price Threshold", value=2.0, step=0.5)
 min_date = pd.Timestamp(st.sidebar.date_input("Minimum Release Date", value=pd.to_datetime("2025-01-01")))
 
 # ----------------------------
-# Sidebar Table
+# Sidebar Simulation
 # ----------------------------
 st.sidebar.header("Simulation Settings")
 
-# Initialize session state if not present
-if 'sim_ran' not in st.session_state:
-    st.session_state['sim_ran'] = False  # Tracks if initial simulation ran
-
-if 'force_rerun' not in st.session_state:
-    st.session_state['force_rerun'] = False  # Tracks user request to rerun
-
-#Force rerun sim, even if inputs are the same
-if st.sidebar.button("Run Simulation"):
-    st.session_state['force_rerun'] = True
-
-# Force rerun if the user uploads any new file
-uploaded_files = [
-    uploaded_sets, uploaded_setBoosterContents, uploaded_setBoosterSheetCards,
-    uploaded_setBoosterContentWeights, uploaded_setBoosterSheets, uploaded_prices,
-    uploaded_cards, uploaded_pack_prices
-]
-
-if any(uploaded_files):
-    st.session_state['force_rerun'] = True
 
 sim_size = st.sidebar.number_input("Packs per Simulation", value=100, step=100)
 samples = st.sidebar.number_input("Number of Simulations", value=100, step=100)
-
-
-
 
 
 # ----------------------------
@@ -98,21 +75,23 @@ def render_dashboard():
     )
 
     # --- Simulation logic ---
-    run_sim = not st.session_state['sim_ran'] or st.session_state['force_rerun']
 
-    if run_sim:
-        pack_price, avg_pack_value, pack_value_at_sim_EV = run_simulation(
+    pack_price, avg_pack_value, pack_value_at_sim_EV = run_simulation(
             latest_packs_EV, set_input, booster_input, sim_size, samples, threshold,
             booster_subsets, sheets_subsets, cards_by_sheet
         )
-        st.session_state['sim_ran'] = True
-        st.session_state['force_rerun'] = False
 
+    
     # Display results
     st.subheader("Simulate Pack Openings")
     fig = plot_simulation(avg_pack_value, pack_value_at_sim_EV, pack_price, sim_size, set_input, booster_input, threshold)
     st.pyplot(fig)
 
+    #Card table 
+    st.subheader("Simulated Card Prices")
+    
+    card_table = sim_card_prices(sim_size, pack_price, set_input, booster_input, booster_subsets, sheets_subsets, cards_by_sheet)
+    st.dataframe(card_table)
 
 # ----------------------------
 # Render dashboard
