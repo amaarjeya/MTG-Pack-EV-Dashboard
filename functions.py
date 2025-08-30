@@ -48,24 +48,17 @@ Booster Index EV is given by:
 
 "Dependencies"
 
-import requests
 
 import pandas as pd
 
-import json
-
-import ast
-
 import numpy as np
-
-from scipy.stats import gaussian_kde
 
 
 import matplotlib.pyplot as plt
 
-import seaborn as sns
 
 import streamlit as st
+import gdown
 
 
 """
@@ -80,59 +73,58 @@ Read Inputs, Clean Data
 #Each of these has a weight
 
 
-#List of sets and release dates
-sets = fr"/Users/amaarjeya/Documents/Python_Projects/MTG Card Project/data/sets.csv"
-
-#Booster Variants and sheet picks in each booster, with sheetPicks per sheet
-setBoosterContents = fr"/Users/amaarjeya/Documents/Python_Projects/MTG Card Project/data/setBoosterContents.csv"
-
-#Cards and card weight by set, booster and sheet name 
-setBoosterSheetCards = fr"/Users/amaarjeya/Documents/Python_Projects/MTG Card Project/data/setBoosterSheetCards.csv"
-
-setBoosterContentWeights = fr"/Users/amaarjeya/Documents/Python_Projects/MTG Card Project/data/setBoosterContentWeights.csv"
-
-#Used to check if a sheet is foil or not
-
-setBoosterSheets = fr"/Users/amaarjeya/Documents/Python_Projects/MTG Card Project/data/setBoosterSheets.csv"
-
-prices =  fr"/Users/amaarjeya/Documents/Python_Projects/MTG Card Project/data/cardPrices.csv"
-
-#To view card names
-cards =  fr"/Users/amaarjeya/Documents/Python_Projects/MTG Card Project/data/cards.csv"
-
-pack_prices = fr"/Users/amaarjeya/Documents/Python_Projects/MTG Card Project/data/PackPrices.csv"
-
-sets = pd.read_csv(sets)
-
-setBoosterContents = pd.read_csv(setBoosterContents)
-
-setBoosterSheetCards = pd.read_csv(setBoosterSheetCards)
-
-setBoosterContentWeights = pd.read_csv(setBoosterContentWeights)
-
-setBoosterSheets = pd.read_csv(setBoosterSheets)
-
-prices = pd.read_csv(prices)
-
-cards = pd.read_csv(cards)
-
-pack_prices = pd.read_csv(pack_prices)
-
-
 
 @st.cache_data
 def load_data():
-    sets = pd.read_csv("data/sets.csv")
-    setBoosterContents = pd.read_csv("data/setBoosterContents.csv")
-    setBoosterSheetCards = pd.read_csv("data/setBoosterSheetCards.csv")
-    setBoosterContentWeights = pd.read_csv("data/setBoosterContentWeights.csv")
-    setBoosterSheets = pd.read_csv("data/setBoosterSheets.csv")
-    prices = pd.read_csv("data/cardPrices.csv")
-    cards = pd.read_csv("data/cards.csv")
-    pack_prices = pd.read_csv("data/PackPrices.csv")
+    """
+    Downloads CSV files from Google Drive and loads them into pandas DataFrames.
+    Returns each DataFrame individually.
+    """
+    # Google Drive file URLs
+    urls = {
+        "sets": "https://drive.google.com/file/d/1Q94b-uTEr5WGL8SGTpUmaDdTqhgmJcey/view?usp=drive_link",
+        "setBoosterContents": "https://drive.google.com/file/d/1g91qFR3Agly5KhY4VEdy9GKRgwKgjU9G/view?usp=drive_link",
+        "setBoosterSheetCards": "https://drive.google.com/file/d/1fib0Aj3ZVv4e4LZoDh0ClIew-IdD3gzN/view?usp=drive_link",
+        "setBoosterContentWeights": "https://drive.google.com/file/d/1pAnpbd38aJz21pneOB5sEEf8xv6JmwQT/view?usp=drive_link",
+        "setBoosterSheets": "https://drive.google.com/file/d/1LTnLfAcQ4AJWCTHZv0LgtC6c9ToFSB29/view?usp=drive_link",
+        "prices": "https://drive.google.com/file/d/1xrWWAqUIxz2410YR1DzO3nuGD3iPO3fG/view?usp=drive_link",
+        "cards": "https://drive.google.com/file/d/12_CKAzpxbVhO2mI4J7r70blp_2wQttDe/view?usp=drive_link",
+        "pack_prices": "https://drive.google.com/file/d/1sAkTd6LS1F1Um4y1sz4aKxlXhuAvtfZd/view?usp=drive_link"
+    }
+
+    # Helper to download and read CSV
+    def download_csv(url, filename):
+        file_id = url.split('/d/')[1].split('/')[0]
+        download_url = f"https://drive.google.com/uc?id={file_id}"
+        gdown.download(download_url, filename, quiet=False)
+        return pd.read_csv(filename)
+    
+    # Load each DataFrame
+    sets = download_csv(urls["sets"], "sets.csv")
+    setBoosterContents = download_csv(urls["setBoosterContents"], "setBoosterContents.csv")
+    setBoosterSheetCards = download_csv(urls["setBoosterSheetCards"], "setBoosterSheetCards.csv")
+    setBoosterContentWeights = download_csv(urls["setBoosterContentWeights"], "setBoosterContentWeights.csv")
+    setBoosterSheets = download_csv(urls["setBoosterSheets"], "setBoosterSheets.csv")
+    prices = download_csv(urls["prices"], "prices.csv")
+    cards = download_csv(urls["cards"], "cards.csv")
+    pack_prices = download_csv(urls["pack_prices"], "pack_prices.csv")
+    
     return sets, setBoosterContents, setBoosterSheetCards, setBoosterContentWeights, setBoosterSheets, prices, cards, pack_prices
 
 
+#@st.cache_data
+#def load_data():
+    sets = pd.read_csv("Data/sets.csv")
+    setBoosterContents = pd.read_csv("Data/setBoosterContents.csv")
+    setBoosterSheetCards = pd.read_csv("Data/setBoosterSheetCards.csv")
+    setBoosterContentWeights = pd.read_csv("Data/setBoosterContentWeights.csv")
+    setBoosterSheets = pd.read_csv("Data/setBoosterSheets.csv")
+    prices = pd.read_csv("Data/cardPrices.csv")
+    cards = pd.read_csv("Data/cards.csv")
+    pack_prices = pd.read_csv("Data/PackPrices.csv")
+    return sets, setBoosterContents, setBoosterSheetCards, setBoosterContentWeights, setBoosterSheets, prices, cards, pack_prices
+
+sets, setBoosterContents, setBoosterSheetCards, setBoosterContentWeights, setBoosterSheets, prices, cards, pack_prices = load_data()
  
 def get_merged_cardprices(
         threshold = 0,
@@ -471,9 +463,9 @@ def return_EV_table(threshold = 0, min_date = '2024-06-01'):
 
     latest_packs_EV = latest_packs_EV.rename(columns= {'name' : 'Name', 'setCode': 'Set Code', 'boosterName': 'Booster Name', 'releaseDate' : 'Release Date', 'Pack EV' : 'Pack EV ($)'})
 
-    latest_packs_EV['Pack Std Dev'] = np.sqrt(latest_packs_EV['Pack Var'])
+    latest_packs_EV['Std Dev'] = np.sqrt(latest_packs_EV['Pack Var'])
 
-    latest_packs_EV = latest_packs_EV[['Name', 'Set Code', 'Booster Name', 'Release Date', 'Pack EV ($)', 'Pack Std Dev']]
+    latest_packs_EV = latest_packs_EV[['Name', 'Set Code', 'Booster Name', 'Release Date', 'Pack EV ($)', 'Std Dev']]
 
     latest_packs_EV = latest_packs_EV.merge(pack_prices, on=['Set Code', 'Booster Name'], how='left')
 
@@ -482,7 +474,7 @@ def return_EV_table(threshold = 0, min_date = '2024-06-01'):
     #Analyze specific sets
 
 
-    latest_packs_EV = latest_packs_EV[['Name', 'Set Code', 'Booster Name', 'Pack EV ($)', 'Pack Price ($)', 'Price Spread', 'Pack Std Dev']]
+    latest_packs_EV = latest_packs_EV[['Name', 'Set Code', 'Booster Name', 'Pack EV ($)', 'Pack Price ($)', 'Price Spread', 'Std Dev']]
 
 
 
@@ -495,11 +487,11 @@ def return_EV_table_styled(latest_packs_EV):
         .background_gradient(subset=["Price Spread"], cmap="RdYlGn", 
                             vmin=latest_packs_EV["Price Spread"].min(), 
                             vmax=latest_packs_EV["Price Spread"].max()) \
-        .background_gradient(subset=["Pack Std Dev"], cmap="RdYlGn_r") \
+        .background_gradient(subset=["Std Dev"], cmap="RdYlGn_r") \
         .format({"Pack EV ($)": "{:.2f}",
                 "Pack Price ($)": "{:.2f}",
                 "Price Spread": "{:.2f}%",   # add percent sign
-                "Pack Std Dev": "{:.2f}"})  # Round only numeric columns
+                "Std Dev": "{:.2f}"})  # Round only numeric columns
 
     return latest_packs_EV_styled
 
