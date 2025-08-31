@@ -717,6 +717,6 @@ def sim_card_prices (n_packs, pack_price, set_input, booster_input, booster_subs
         .format({
             "Card Price ($)": "{:.2f}",
             "Sim Price ($)": "{:.2f}",
-            "Price Spread": "{:.2f}%"})
+            "Price Spread": "{:.2f}"})
                              
     return table
