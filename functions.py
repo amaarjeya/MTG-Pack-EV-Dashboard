@@ -706,7 +706,7 @@ def sim_card_prices (n_packs, pack_price, set_input, booster_input, booster_subs
 
     table = table[['cardName', 'price', 'sim price']]
 
-    table['Price Spread'] = table['price'] - table['sim price']
+    table['Price Spread ($)'] = table['price'] - table['sim price']
 
     table = table.rename(columns= {'cardName' : 'Name', 'price': 'Card Price ($)', 'sim price': 'Sim Price ($)'})
 
