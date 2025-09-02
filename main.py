@@ -61,7 +61,9 @@ def render_dashboard():
     )
 
     set_input = st.sidebar.selectbox("Set", options=latest_packs_EV['Set Code'].unique())
-    booster_input = st.sidebar.selectbox("Booster Type", options=['play','set','draft','collector'])
+    booster_input = st.sidebar.selectbox("Booster Type", options = latest_packs_EV[
+    latest_packs_EV['Set Code'] == set_input
+]['Booster Name'].unique())
 
     st.subheader("Pack Expected Value")
     row_height = 34
