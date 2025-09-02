@@ -710,13 +710,13 @@ def sim_card_prices (n_packs, pack_price, set_input, booster_input, booster_subs
 
     table = table.rename(columns= {'cardName' : 'Name', 'price': 'Card Price ($)', 'sim price': 'Sim Price ($)'})
 
-    table = table.sort_values(by='Price Spread', ascending= False)
+    table = table.sort_values(by='Price Spread ($)', ascending= False)
 
     table = table.style \
-        .background_gradient(subset=["Price Spread"], cmap="RdYlGn") \
+        .background_gradient(subset=["Price Spread ($)"], cmap="RdYlGn") \
         .format({
             "Card Price ($)": "{:.2f}",
             "Sim Price ($)": "{:.2f}",
-            "Price Spread": "{:.2f}"})
+            "Price Spread ($)": "{:.2f}"})
                              
     return table
