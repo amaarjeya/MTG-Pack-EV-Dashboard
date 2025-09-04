@@ -35,7 +35,7 @@ pack_prices = pd.read_csv(uploaded_pack_prices) if uploaded_pack_prices else dem
 # ----------------------------
 st.sidebar.header("Table Settings")
 threshold = st.sidebar.number_input("Price Threshold", value=2.0, step=0.5)
-min_date = pd.Timestamp(st.sidebar.date_input("Minimum Release Date", value=pd.to_datetime("2025-01-01")))
+min_date = pd.Timestamp(st.sidebar.date_input("Minimum Release Date", value=pd.to_datetime("2024-01-01")))
 
 # ----------------------------
 # Sidebar Simulation
